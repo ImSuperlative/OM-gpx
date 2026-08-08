@@ -94,13 +94,13 @@ func assertGPXPointMatchesLogPoint(t *testing.T, index int, actual testGPXPoint,
 	assertNear(t, fmt.Sprintf("point %d latitude", index), actualLat, expected.Lat, 1e-9)
 	assertNear(t, fmt.Sprintf("point %d longitude", index), actualLon, expected.Lon, 1e-9)
 
-	if expected.Ele == nil {
+	if expected.GPSAltitude == nil {
 		if actual.Ele != "" {
 			t.Fatalf("point %d elevation = %q, want empty", index, actual.Ele)
 		}
 	} else {
 		actualEle := parseTestFloat(t, actual.Ele)
-		assertNear(t, fmt.Sprintf("point %d elevation", index), actualEle, *expected.Ele, 0.05)
+		assertNear(t, fmt.Sprintf("point %d elevation", index), actualEle, *expected.GPSAltitude, 0.05)
 	}
 
 	wantTime := formatTime(expected.Time)

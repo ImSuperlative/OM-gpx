@@ -21,14 +21,31 @@ type trackPoint struct {
 	Time      time.Time
 	Lat       float64
 	Lon       float64
-	Ele       *float64
-	Speed     *float64
-	Course    *float64
+
+	GPSAltitude *float64
+	Speed       *float64
+	Course      *float64
+
+	PressureHPA        *float64
+	BarometricAltitude *float64
+
+	AccelerationXMG *float64
+	AccelerationYMG *float64
+	AccelerationZMG *float64
+}
+
+type sensorPoint struct {
+	Time               time.Time
+	PressureHPA        *float64
+	BarometricAltitude *float64
+	AccelerationXMG    *float64
+	AccelerationYMG    *float64
+	AccelerationZMG    *float64
 }
 
 type ggaFix struct {
-	Time nmea.Time
-	Lat  float64
-	Lon  float64
-	Ele  *float64
+	Time        nmea.Time
+	Lat         float64
+	Lon         float64
+	GPSAltitude *float64
 }

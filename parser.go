@@ -70,10 +70,10 @@ func parseGGA(line string) (ggaFix, bool) {
 		return ggaFix{}, false
 	}
 	return ggaFix{
-		Time: gga.Time,
-		Lat:  gga.Latitude,
-		Lon:  gga.Longitude,
-		Ele:  &gga.Altitude,
+		Time:        gga.Time,
+		Lat:         gga.Latitude,
+		Lon:         gga.Longitude,
+		GPSAltitude: &gga.Altitude,
 	}, true
 }
 
@@ -97,13 +97,13 @@ func parseRMC(line string, fix ggaFix) (trackPoint, bool, error) {
 	}
 
 	return trackPoint{
-		TrackName: timestamp.Format("20060102"),
-		Time:      timestamp,
-		Lat:       fix.Lat,
-		Lon:       fix.Lon,
-		Ele:       fix.Ele,
-		Speed:     parseNMEASpeed(rmc, rawFields),
-		Course:    parseNMEACourse(rmc, rawFields),
+		TrackName:   timestamp.Format("20060102"),
+		Time:        timestamp,
+		Lat:         fix.Lat,
+		Lon:         fix.Lon,
+		GPSAltitude: fix.GPSAltitude,
+		Speed:       parseNMEASpeed(rmc, rawFields),
+		Course:      parseNMEACourse(rmc, rawFields),
 	}, true, nil
 }
 

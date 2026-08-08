@@ -37,20 +37,6 @@ func TestDiscoverLogFilesFindsLogsAndIgnoresSNS(t *testing.T) {
 	}
 }
 
-func TestDiscoverCompanionSNSFiles(t *testing.T) {
-	tmpDir := t.TempDir()
-	logPath := filepath.Join(tmpDir, "track.log")
-	snsPath := filepath.Join(tmpDir, "track.sns")
-	mustWriteFile(t, logPath, "")
-	mustWriteFile(t, snsPath, "")
-
-	got := discoverCompanionSNSFiles([]string{logPath, filepath.Join(tmpDir, "missing.log")})
-	want := []string{snsPath}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("discoverCompanionSNSFiles() = %#v, want %#v", got, want)
-	}
-}
-
 func TestParseArgsAllowsOptionsAnywhere(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -134,24 +120,30 @@ func TestParseArgsRejectsBadOptions(t *testing.T) {
 	}
 }
 
-func TestDefaultOutputPath(t *testing.T) {
-	tests := []struct {
-		name   string
-		inputs []string
-		want   string
-	}{
-		{name: "single log", inputs: []string{"sample/20260620.log"}, want: filepath.Clean("sample/20260620.gpx")},
-		{name: "single directory", inputs: []string{"sample"}, want: filepath.Clean("sample.gpx")},
-		{name: "multiple inputs", inputs: []string{"sample/20260620.log", "sample/20260620.sns"}, want: "om-gpx.gpx"},
+// Fixes recorded under an identical timestamp must keep their input order
+// through sorting, so the same log always produces byte-identical output.
+// Several timestamp groups are needed to provoke real partitioning; a slice of
+// wholly identical keys takes a sorted-input fast path and hides the problem.
+func TestSortTrackPointsKeepsIdenticalTimestampsInInputOrder(t *testing.T) {
+	base := time.Date(2026, 6, 19, 8, 27, 34, 0, time.UTC)
+	points := make([]trackPoint, 200)
+	for i := range points {
+		points[i] = trackPoint{
+			TrackName: "20260619",
+			Time:      base.Add(time.Duration(i%3) * time.Second),
+			Lat:       float64(i),
+		}
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			got := defaultOutputPath(test.inputs)
-			if got != test.want {
-				t.Fatalf("defaultOutputPath() = %q, want %q", got, test.want)
-			}
-		})
+	sortTrackPoints(points)
+
+	highestSoFar := map[time.Time]float64{}
+	for _, point := range points {
+		if previous, seen := highestSoFar[point.Time]; seen && point.Lat < previous {
+			t.Fatalf("at %s, fix %v follows %v: identical timestamps were reordered",
+				point.Time, point.Lat, previous)
+		}
+		highestSoFar[point.Time] = point.Lat
 	}
 }
 

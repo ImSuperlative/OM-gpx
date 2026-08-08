@@ -43,7 +43,7 @@ func TestParseGGARMCPoint(t *testing.T) {
 
 	assertNear(t, "latitude", point.Lat, 57.62757685, 1e-9)
 	assertNear(t, "longitude", point.Lon, 11.805115433333333, 1e-12)
-	assertNear(t, "elevation", *point.Ele, 15.440701, 1e-9)
+	assertNear(t, "elevation", *point.GPSAltitude, 15.440701, 1e-9)
 	assertNear(t, "speed", *point.Speed, 0.971922*knotsToMeters, 1e-12)
 	assertNear(t, "course", *point.Course, 205.3125, 1e-9)
 	if point.TrackName != "20260620" {

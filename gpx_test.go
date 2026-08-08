@@ -14,13 +14,13 @@ func TestWriteGPXToWritesXMLAndTrackPointExtensions(t *testing.T) {
 	elevation := 15.440701
 	points := []trackPoint{
 		{
-			TrackName: "20260620",
-			Time:      time.Date(2026, 6, 20, 19, 52, 39, 120_000_000, time.UTC),
-			Lat:       57.62757685,
-			Lon:       11.805115433333333,
-			Ele:       &elevation,
-			Speed:     &speed,
-			Course:    &course,
+			TrackName:   "20260620",
+			Time:        time.Date(2026, 6, 20, 19, 52, 39, 120_000_000, time.UTC),
+			Lat:         57.62757685,
+			Lon:         11.805115433333333,
+			GPSAltitude: &elevation,
+			Speed:       &speed,
+			Course:      &course,
 		},
 	}
 

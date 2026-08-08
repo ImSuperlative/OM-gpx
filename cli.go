@@ -14,6 +14,10 @@ import (
 
 type options struct {
 	Output  string
+	OutDir  string
+	GPX     bool
+	GeoJSON bool
+	DryRun  bool
 	Version bool
 }
 
@@ -39,37 +43,26 @@ func run(args []string, stdout, stderr io.Writer) error {
 	if len(logFiles) == 0 {
 		return errors.New("no .log files found")
 	}
-	snsFiles := discoverCompanionSNSFiles(logFiles)
-
-	points, err := parseLogFiles(logFiles)
+	plans, err := planConversions(logFiles, opts)
 	if err != nil {
 		return err
 	}
-	if len(points) == 0 {
-		return errors.New("no valid GPS fixes found")
-	}
-	sortTrackPoints(points)
 
-	output := opts.Output
-	if output == "" {
-		output = defaultOutputPath(inputs)
+	if opts.DryRun {
+		return printPlans(stdout, plans)
 	}
-
-	if err := writeGPX(output, points); err != nil {
-		return err
-	}
-	if len(snsFiles) > 0 {
-		fmt.Fprintf(stderr, "found %d matching sns file(s)\n", len(snsFiles))
-	}
-	fmt.Fprintf(stderr, "wrote %d points from %d log file(s) to %s\n", len(points), len(logFiles), output)
-	return nil
+	return runBatch(plans, stderr)
 }
 
 func parseArgs(args []string, stderr io.Writer) (options, []string, error) {
 	var opts options
 	flags := flag.NewFlagSet("om-gpx", flag.ContinueOnError)
 	flags.SetOutput(stderr)
-	flags.StringVarP(&opts.Output, "output", "o", "", "write GPX to this file")
+	flags.StringVarP(&opts.Output, "output", "o", "", "single input only: write outputs using this path as the stem")
+	flags.StringVarP(&opts.OutDir, "out-dir", "d", "", "write all outputs into this directory")
+	flags.BoolVar(&opts.GPX, "gpx", false, "write only GPX")
+	flags.BoolVar(&opts.GeoJSON, "geojson", false, "write only GeoJSON")
+	flags.BoolVarP(&opts.DryRun, "dry-run", "n", false, "print planned pairings and outputs without writing")
 	flags.BoolVarP(&opts.Version, "version", "v", false, "print version and exit")
 	flags.Usage = func() {
 		printUsage(stderr)
@@ -97,30 +90,30 @@ func printUsage(writer io.Writer) {
   om-gpx [options] input [input...]
 
 Inputs may be OI.Share .log files or directories containing .log files.
-Sensor-only .sns files are accepted as inputs but ignored for GPX track points.
+Each .log becomes its own GPX and GeoJSON. A .sns recorded alongside a .log is
+paired automatically and enriches the GeoJSON only; the GPX stays unchanged.
 
 Options:
   -o, --output string
-      write GPX to this file
+      single input only: write outputs using this path as the stem
+  -d, --out-dir string
+      write all outputs into this directory
+      --gpx
+      write only GPX
+      --geojson
+      write only GeoJSON
+  -n, --dry-run
+      print planned pairings and outputs without writing
   -v, -version, --version
       print version and exit
 `)
 }
 
-func parseLogFiles(paths []string) ([]trackPoint, error) {
-	var points []trackPoint
-	for _, path := range paths {
-		filePoints, err := parseLogFile(path)
-		if err != nil {
-			return nil, err
-		}
-		points = append(points, filePoints...)
-	}
-	return points, nil
-}
-
+// sortTrackPoints orders points for output. The sort is stable so that fixes
+// sharing a timestamp keep the order OI.Share recorded them in, which keeps
+// output reproducible across runs.
 func sortTrackPoints(points []trackPoint) {
-	sort.Slice(points, func(i, j int) bool {
+	sort.SliceStable(points, func(i, j int) bool {
 		if points[i].TrackName != points[j].TrackName {
 			return points[i].TrackName < points[j].TrackName
 		}
@@ -159,17 +152,6 @@ func discoverLogFiles(inputs []string) ([]string, error) {
 	return files, nil
 }
 
-func discoverCompanionSNSFiles(logFiles []string) []string {
-	var snsFiles []string
-	for _, logFile := range logFiles {
-		snsFile := strings.TrimSuffix(logFile, filepath.Ext(logFile)) + ".sns"
-		if _, err := os.Stat(snsFile); err == nil {
-			snsFiles = append(snsFiles, snsFile)
-		}
-	}
-	return snsFiles
-}
-
 func isLogFile(path string) bool {
 	return strings.EqualFold(filepath.Ext(path), ".log")
 }
@@ -181,16 +163,4 @@ func addUniquePath(paths *[]string, seen map[string]bool, path string) {
 	}
 	seen[clean] = true
 	*paths = append(*paths, clean)
-}
-
-func defaultOutputPath(inputs []string) string {
-	if len(inputs) == 1 {
-		input := filepath.Clean(inputs[0])
-		ext := filepath.Ext(input)
-		if ext == "" {
-			return input + ".gpx"
-		}
-		return strings.TrimSuffix(input, ext) + ".gpx"
-	}
-	return "om-gpx.gpx"
 }

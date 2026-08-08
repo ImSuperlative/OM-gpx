@@ -99,8 +99,8 @@ func toGPXPoint(point trackPoint) gpxTrackPoint {
 		Lon:  formatFloat(point.Lon),
 		Time: formatTime(point.Time),
 	}
-	if point.Ele != nil {
-		ele := fmt.Sprintf("%.1f", *point.Ele)
+	if point.GPSAltitude != nil {
+		ele := fmt.Sprintf("%.1f", *point.GPSAltitude)
 		gpxPoint.Ele = &ele
 	}
 	if point.Speed != nil || point.Course != nil {
